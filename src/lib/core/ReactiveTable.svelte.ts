@@ -322,6 +322,13 @@ export class ReactiveTable<T extends DataRow = DataRow> implements ReactiveTable
 	}
 	
 	/**
+	 * Deselect rows by IDs
+	 */
+	deselectRows(ids: string[]): void {
+		ids.forEach(id => this._state.deselectRow(id));
+	}
+	
+	/**
 	 * Clear selection
 	 */
 	clearSelection(): void {

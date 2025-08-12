@@ -343,3 +343,65 @@ export interface ValidationRule {
 	/** Rule name */
 	name?: string;
 }
+
+/**
+ * Real-time synchronization types
+ */
+
+/** Conflict resolution strategies */
+export type ConflictResolutionStrategy = 
+	| 'last-write-wins'
+	| 'first-write-wins' 
+	| 'manual'
+	| 'merge';
+
+/** Optimistic update interface */
+export interface OptimisticUpdate<T extends DataRow = DataRow> {
+	/** Unique update ID */
+	id: string;
+	
+	/** Update type */
+	type: 'create' | 'update' | 'delete';
+	
+	/** Data being updated */
+	data: T;
+	
+	/** Original data (for rollback) */
+	originalData?: T;
+	
+	/** Timestamp when update was created */
+	timestamp: Date;
+	
+	/** Status of the update */
+	status: 'pending' | 'syncing' | 'synced' | 'failed' | 'conflicted';
+	
+	/** Retry count */
+	retryCount: number;
+	
+	/** Error message if failed */
+	error?: string;
+}
+
+/** Real-time sync event interface */
+export interface RealtimeSyncEvent<T extends DataRow = DataRow> {
+	/** Event type */
+	type: 'sync_start' | 'sync_complete' | 'sync_error' | 'conflict_detected' | 'connection_change';
+	
+	/** Event data */
+	data?: any;
+	
+	/** Update that caused the event */
+	update?: OptimisticUpdate<T>;
+	
+	/** Error if applicable */
+	error?: string;
+	
+	/** Timestamp */
+	timestamp: Date;
+}
+
+/** Connection state types */
+export type ConnectionState = 'connected' | 'disconnected' | 'reconnecting' | 'error';
+
+/** Sync status types */
+export type SyncStatus = 'idle' | 'syncing' | 'error' | 'conflicted';

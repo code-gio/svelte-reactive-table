@@ -73,6 +73,18 @@ export interface ColumnDefinition<T = any> {
 	/** Format options */
 	format?: FormatOptions;
 	
+	/** Custom formatter function */
+	formatter?: (value: any, row: T) => string;
+	
+	/** Number precision for numeric types */
+	precision?: number;
+	
+	/** Cell click handler */
+	onClick?: (value: any, row: T, column: ColumnDefinition<T>) => void;
+	
+	/** Whether to truncate cell content */
+	truncate?: boolean;
+	
 	/** Validation rules */
 	validation?: ValidationRule[];
 	

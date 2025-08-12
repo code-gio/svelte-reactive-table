@@ -50,8 +50,20 @@ export interface TableOptions {
 	/** Enable row selection */
 	selectable?: boolean;
 	
+	/** Enable multi-select mode */
+	multiSelect?: boolean;
+	
 	/** Selection mode */
 	selectionMode?: 'single' | 'multiple';
+	
+	/** Row click handler */
+	onRowClick?: (row: any, event: MouseEvent) => void;
+	
+	/** Row double-click handler */
+	onRowDoubleClick?: (row: any, event: MouseEvent) => void;
+	
+	/** Custom empty state message */
+	emptyMessage?: string;
 	
 	/** Enable inline editing */
 	editable?: boolean;

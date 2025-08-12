@@ -4,6 +4,7 @@
 
 import type { DataRow, DataChangeEvent } from '../core/DataTypes.js';
 import type { TableFilter, TableSort } from '../core/TableTypes.js';
+import type { ConnectionState } from '../core/StateTypes.js';
 
 /**
  * Base adapter configuration
@@ -653,3 +654,170 @@ export interface CacheStatus {
  * Connection quality levels
  */
 export type ConnectionQuality = 'excellent' | 'good' | 'poor' | 'offline';
+
+/**
+ * Main table adapter interface
+ * Combines CRUD operations with real-time capabilities
+ */
+export interface TableAdapter<T extends DataRow = DataRow> extends CRUDOperations<T> {
+	/** Adapter configuration */
+	readonly config: AdapterConfig;
+	
+	/** Current adapter state */
+	readonly state: AdapterState;
+	
+	/** Initialize connection */
+	connect(): Promise<void>;
+	
+	/** Close connection */
+	disconnect(): Promise<void>;
+	
+	/** Check connection status */
+	isConnected(): boolean;
+	
+	/** Refresh all data */
+	refresh(): Promise<void>;
+	
+	/** Real-time subscription management */
+	onDataChange?: (callback: (event: DataChangeEvent<T>) => void) => (() => void);
+	
+	/** Connection state change events */
+	onConnectionChange?: (callback: (connected: boolean) => void) => (() => void);
+	
+	/** Error events */
+	onError?: (callback: (error: Error) => void) => (() => void);
+	
+	/** Event emitter for custom events */
+	emit?: (event: string, data: any) => void;
+	
+	/** Event listener for custom events */
+	on?: (event: string, callback: (data: any) => void) => (() => void);
+	
+	/** Get adapter capabilities */
+	getCapabilities(): AdapterCapabilities;
+	
+	/** Get adapter metadata */
+	getMetadata(): AdapterMetadata;
+	
+	/** Validate configuration */
+	validateConfig(): ValidationResult[];
+	
+	/** Get performance metrics */
+	getMetrics(): AdapterMetrics;
+	
+	/** Destroy adapter and cleanup */
+	destroy(): Promise<void>;
+}
+
+/**
+ * Adapter capabilities
+ */
+export interface AdapterCapabilities {
+	/** Supports real-time updates */
+	realtime: boolean;
+	
+	/** Supports transactions */
+	transactions: boolean;
+	
+	/** Supports bulk operations */
+	bulk: boolean;
+	
+	/** Supports full-text search */
+	search: boolean;
+	
+	/** Supports file uploads */
+	files: boolean;
+	
+	/** Supports offline mode */
+	offline: boolean;
+	
+	/** Supports caching */
+	cache: boolean;
+	
+	/** Supports pagination */
+	pagination: boolean;
+	
+	/** Supports sorting */
+	sorting: boolean;
+	
+	/** Supports filtering */
+	filtering: boolean;
+	
+	/** Maximum concurrent connections */
+	maxConnections?: number;
+	
+	/** Maximum payload size */
+	maxPayloadSize?: number;
+}
+
+/**
+ * Adapter metadata
+ */
+export interface AdapterMetadata {
+	/** Adapter name */
+	name: string;
+	
+	/** Adapter version */
+	version: string;
+	
+	/** Adapter author */
+	author?: string;
+	
+	/** Adapter description */
+	description?: string;
+	
+	/** Supported database types */
+	supportedDatabases?: string[];
+	
+	/** Documentation URL */
+	documentation?: string;
+	
+	/** Custom metadata */
+	custom?: Record<string, any>;
+}
+
+/**
+ * Adapter performance metrics
+ */
+export interface AdapterMetrics {
+	/** Total requests made */
+	totalRequests: number;
+	
+	/** Average response time (ms) */
+	averageResponseTime: number;
+	
+	/** Error rate (percentage) */
+	errorRate: number;
+	
+	/** Cache hit rate (percentage) */
+	cacheHitRate: number;
+	
+	/** Data transferred (bytes) */
+	dataTransferred: number;
+	
+	/** Connections opened */
+	connectionsOpened: number;
+	
+	/** Uptime (ms) */
+	uptime: number;
+	
+	/** Last reset timestamp */
+	lastReset: Date;
+}
+
+/**
+ * Validation result interface
+ */
+export interface ValidationResult {
+	/** Is valid */
+	valid: boolean;
+	
+	/** Error message */
+	message?: string;
+	
+	/** Field that failed validation */
+	field?: string;
+	
+	/** Error code */
+	code?: string;
+}
