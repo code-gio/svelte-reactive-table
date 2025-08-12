@@ -431,32 +431,49 @@ export class ReactiveTableState<T extends DataRow = DataRow> implements Reactive
 		switch (operator) {
 			case 'equals':
 				return value === filterValue;
-			case 'not_equals':
+			case 'notEquals':
 				return value !== filterValue;
 			case 'contains':
 				return String(value).toLowerCase().includes(String(filterValue).toLowerCase());
-			case 'not_contains':
+			case 'notContains':
 				return !String(value).toLowerCase().includes(String(filterValue).toLowerCase());
-			case 'starts_with':
+			case 'startsWith':
 				return String(value).toLowerCase().startsWith(String(filterValue).toLowerCase());
-			case 'ends_with':
+			case 'endsWith':
 				return String(value).toLowerCase().endsWith(String(filterValue).toLowerCase());
-			case 'greater_than':
+			case 'greaterThan':
 				return Number(value) > Number(filterValue);
-			case 'less_than':
+			case 'lessThan':
 				return Number(value) < Number(filterValue);
-			case 'greater_equal':
+			case 'greaterThanOrEqual':
 				return Number(value) >= Number(filterValue);
-			case 'less_equal':
+			case 'lessThanOrEqual':
 				return Number(value) <= Number(filterValue);
 			case 'in':
 				return Array.isArray(filterValue) && filterValue.includes(value);
-			case 'not_in':
+			case 'notIn':
 				return Array.isArray(filterValue) && !filterValue.includes(value);
-			case 'is_null':
+			case 'between':
+				return Array.isArray(filterValue) && filterValue.length === 2 &&
+					Number(value) >= Number(filterValue[0]) && Number(value) <= Number(filterValue[1]);
+			case 'isNull':
 				return value === null || value === undefined;
-			case 'is_not_null':
+			case 'isNotNull':
 				return value !== null && value !== undefined;
+			case 'isEmpty':
+				return value === '' || value === null || value === undefined;
+			case 'isNotEmpty':
+				return value !== '' && value !== null && value !== undefined;
+			case 'regex':
+				if (typeof filterValue === 'string' && typeof value === 'string') {
+					try {
+						const regex = new RegExp(filterValue, 'i');
+						return regex.test(value);
+					} catch {
+						return false;
+					}
+				}
+				return false;
 			default:
 				return true;
 		}

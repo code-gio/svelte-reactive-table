@@ -487,7 +487,7 @@ export class DataExporter<T extends DataRow = DataRow> {
 	 * Download exported data as file
 	 */
 	static downloadFile(result: ExportResult): void {
-		const blob = new Blob([result.content], { type: result.mimeType });
+		const blob = new Blob([result.content as BlobPart], { type: result.mimeType });
 		const url = URL.createObjectURL(blob);
 		
 		const link = document.createElement('a');

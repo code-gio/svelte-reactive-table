@@ -231,14 +231,7 @@
 		}
 	}
 
-	/* Debug styles */
-	.debug-cell {
-		background: #ffeb3b;
-		color: #000;
-		font-size: 12px;
-		padding: 8px;
-		text-align: center;
-	}
+
 
 	/* Selection header */
 	.selection-header {

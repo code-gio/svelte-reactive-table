@@ -358,27 +358,7 @@
 		font-weight: 500;
 	}
 
-	/* Loading skeleton */
-	.skeleton-row {
-		background: transparent;
-		animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-	}
 
-	.skeleton-cell {
-		padding: 0.75rem 1rem;
-		border-right: 1px solid var(--table-border, #e2e8f0);
-	}
-
-	.skeleton-cell:last-child {
-		border-right: none;
-	}
-
-	.skeleton-content {
-		height: 1rem;
-		background: var(--table-skeleton, #e2e8f0);
-		border-radius: 0.25rem;
-		width: 80%;
-	}
 
 	/* Pulse animation for skeleton */
 	@keyframes pulse {
@@ -414,13 +394,7 @@
 			color: var(--table-text-muted, #6b7280);
 		}
 
-		.skeleton-content {
-			background: var(--table-skeleton, #374151);
-		}
 
-		.skeleton-cell {
-			border-right-color: var(--table-border, #4a5568);
-		}
 	}
 
 	/* High contrast mode */
@@ -433,20 +407,12 @@
 			color: #374151;
 		}
 
-		.skeleton-content {
-			background: #6b7280;
-		}
+
 	}
 
 	/* Reduced motion */
 	@media (prefers-reduced-motion: reduce) {
-		.skeleton-row {
-			animation: none;
-		}
-
-		.skeleton-content {
-			opacity: 0.6;
-		}
+		/* Skeleton animations disabled for reduced motion preference */
 	}
 
 	/* Print styles */
@@ -455,7 +421,6 @@
 			background: white !important;
 		}
 
-		.skeleton-row,
 		.empty-row,
 		.error-row {
 			display: none;
@@ -480,8 +445,6 @@
 			font-size: 0.9rem;
 		}
 
-		.skeleton-cell {
-			padding: 0.5rem 0.75rem;
-		}
+
 	}
 </style>

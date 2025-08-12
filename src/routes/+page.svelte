@@ -42,7 +42,7 @@
 		rating: number;
 	}
 
-	let sampleData: PersonRow[] = [
+	let sampleData = $state<PersonRow[]>([
 		{
 			id: '1',
 			name: 'John Doe',
@@ -163,7 +163,7 @@
 			notes: 'Backend engineer',
 			rating: 4.8
 		}
-	];
+	]);
 
 	// Editing configuration state
 	let editingEnabled = $state(true);
@@ -865,15 +865,7 @@
 		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 	}
 
-	.demo-table {
-		--table-bg: #ffffff;
-		--table-border: #e2e8f0;
-		--table-text: #1f2937;
-		--table-header-bg: #f8fafc;
-		--table-row-hover: #f1f5f9;
-		--table-selected: #dbeafe;
-		--table-focus: #3b82f6;
-	}
+
 
 	.features {
 		margin-top: 3rem;
@@ -970,14 +962,7 @@
 			border-color: #374151;
 		}
 
-		.demo-table {
-			--table-bg: #1f2937;
-			--table-border: #374151;
-			--table-text: #f9fafb;
-			--table-header-bg: #111827;
-			--table-row-hover: #374151;
-			--table-selected: #1e3a8a;
-		}
+
 
 		.features h2 {
 			color: #f9fafb;

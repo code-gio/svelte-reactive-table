@@ -700,7 +700,7 @@ export interface TableAdapter<T extends DataRow = DataRow> extends CRUDOperation
 	getMetadata(): AdapterMetadata;
 	
 	/** Validate configuration */
-	validateConfig(): ValidationResult[];
+	validateConfig(): AdapterValidationResult[];
 	
 	/** Get performance metrics */
 	getMetrics(): AdapterMetrics;
@@ -808,7 +808,7 @@ export interface AdapterMetrics {
 /**
  * Validation result interface
  */
-export interface ValidationResult {
+export interface AdapterValidationResult {
 	/** Is valid */
 	valid: boolean;
 	

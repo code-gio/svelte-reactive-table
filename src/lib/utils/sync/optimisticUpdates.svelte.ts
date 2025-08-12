@@ -350,7 +350,9 @@ export class OptimisticUpdateManager<T extends DataRow = DataRow> {
 			...this.state.syncing
 		];
 		
-		return allUpdates.filter(update => String(update.data.id) === recordId);
+		return allUpdates.filter(update => 
+			typeof update === 'object' && 'data' in update && String(update.data.id) === recordId
+		) as OptimisticUpdate<T>[];
 	}
 	
 	/**

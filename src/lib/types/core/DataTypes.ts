@@ -128,6 +128,7 @@ export interface CellStyle {
  * Data types supported by the table
  */
 export type DataType = 
+	| 'string'
 	| 'text'
 	| 'number'
 	| 'integer'
@@ -318,6 +319,9 @@ export interface DataChangeEvent<T = DataRow> {
 	
 	/** Affected rows */
 	rows: T[];
+	
+	/** Data for single row changes (for backward compatibility) */
+	data?: T;
 	
 	/** Changes made (for updates) */
 	changes?: Partial<T>[];

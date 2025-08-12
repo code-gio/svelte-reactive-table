@@ -9,7 +9,7 @@ import type {
 	TableFilter,
 	TableSort
 } from '../../types/core/index.js';
-import type { 
+import type {
 	TableAdapter,
 	AdapterConfig,
 	AdapterState,
@@ -17,9 +17,9 @@ import type {
 	AdapterMetadata,
 	AdapterMetrics,
 	ReadOptions,
-	CountOptions,
-	ValidationResult
+	CountOptions
 } from '../../types/adapters/index.js';
+import type { AdapterValidationResult } from '../../types/adapters/index.js';
 
 export interface RestAdapterConfig extends AdapterConfig {
 	/** Base API URL */
@@ -741,8 +741,8 @@ export class RestAdapter<T extends DataRow = DataRow> implements TableAdapter<T>
 		};
 	}
 	
-	validateConfig(): ValidationResult[] {
-		const results: ValidationResult[] = [];
+	validateConfig(): AdapterValidationResult[] {
+		const results: AdapterValidationResult[] = [];
 		
 		if (!this.config.baseUrl) {
 			results.push({

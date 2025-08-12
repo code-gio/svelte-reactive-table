@@ -37,7 +37,7 @@ export interface SyncState {
 
 export interface ConflictEvent {
 	id: string;
-	type: 'update' | 'delete' | 'create';
+	type: 'create' | 'update' | 'delete' | 'bulk_update' | 'bulk_delete';
 	localData: DataRow;
 	remoteData: DataRow;
 	timestamp: Date;
@@ -112,7 +112,7 @@ export class RealtimeSync<T extends DataRow = DataRow> {
 	 */
 	private async setupRealtimeListeners(): Promise<void> {
 		// Listen for data changes from adapter
-		const unsubscribe = this.adapter.onDataChange?.((event) => {
+		const unsubscribe = this.adapter.onDataChange?.((event: DataChangeEvent<T>) => {
 			this.handleRemoteChange(event);
 		});
 		
@@ -121,7 +121,7 @@ export class RealtimeSync<T extends DataRow = DataRow> {
 		}
 		
 		// Listen for connection state changes
-		const connectionUnsubscribe = this.adapter.onConnectionChange?.((connected) => {
+		const connectionUnsubscribe = this.adapter.onConnectionChange?.((connected: boolean) => {
 			this.state.connected = connected;
 			
 			if (!connected && this.config.autoReconnect) {
@@ -166,7 +166,7 @@ export class RealtimeSync<T extends DataRow = DataRow> {
 					id: `conflict-${Date.now()}-${Math.random()}`,
 					type: remoteEvent.type,
 					localData: update.data,
-					remoteData: remoteEvent.data,
+					remoteData: remoteEvent.data || update.data,
 					timestamp: new Date(),
 					resolved: false
 				};
@@ -183,7 +183,7 @@ export class RealtimeSync<T extends DataRow = DataRow> {
 	private isConflicting(localUpdate: OptimisticUpdate, remoteEvent: DataChangeEvent<T>): boolean {
 		// Same record ID and both are updates/deletes
 		return (
-			String(localUpdate.data.id) === String(remoteEvent.data.id) &&
+			String(localUpdate.data.id) === String(remoteEvent.data?.id) &&
 			(localUpdate.type === 'update' || localUpdate.type === 'delete') &&
 			(remoteEvent.type === 'update' || remoteEvent.type === 'delete')
 		);
@@ -198,7 +198,14 @@ export class RealtimeSync<T extends DataRow = DataRow> {
 				case 'last-write-wins':
 					// Remote change wins, discard local optimistic update
 					this.removeOptimisticUpdate(conflict.localData.id);
-					this.applyRemoteChange(remoteEvent);
+					this.applyRemoteChange({
+						type: remoteEvent.type,
+						rows: remoteEvent.data ? [remoteEvent.data] : [],
+						source: 'sync',
+						timestamp: remoteEvent.timestamp,
+						transactionId: remoteEvent.transactionId,
+						changes: remoteEvent.changes
+					});
 					conflict.resolved = true;
 					break;
 					
@@ -213,14 +220,17 @@ export class RealtimeSync<T extends DataRow = DataRow> {
 					break;
 					
 				case 'merge':
-					// Attempt to merge changes
-					const merged = this.mergeChanges(conflict.localData, conflict.remoteData);
+							// Attempt to merge changes
+		const merged = this.mergeChanges(conflict.localData as T, conflict.remoteData as T);
 					if (merged) {
 						this.removeOptimisticUpdate(conflict.localData.id);
 						this.applyRemoteChange({
 							type: remoteEvent.type,
-							data: merged,
-							timestamp: remoteEvent.timestamp
+							rows: [merged],
+							source: 'sync',
+							timestamp: remoteEvent.timestamp,
+							transactionId: remoteEvent.transactionId,
+							changes: remoteEvent.changes
 						});
 						conflict.resolved = true;
 					} else {
@@ -346,10 +356,10 @@ export class RealtimeSync<T extends DataRow = DataRow> {
 	private async syncUpdate(update: OptimisticUpdate): Promise<void> {
 		switch (update.type) {
 			case 'create':
-				await this.adapter.create(update.data);
+				await this.adapter.create(update.data as Partial<T>);
 				break;
 			case 'update':
-				await this.adapter.update(String(update.data.id), update.data);
+				await this.adapter.update(String(update.data.id), update.data as Partial<T>);
 				break;
 			case 'delete':
 				await this.adapter.delete(String(update.data.id));
@@ -384,9 +394,9 @@ export class RealtimeSync<T extends DataRow = DataRow> {
 		let resolvedData: T;
 		
 		if (resolution === 'local') {
-			resolvedData = conflict.localData;
-		} else if (resolution === 'remote') {
-			resolvedData = conflict.remoteData;
+					resolvedData = conflict.localData as T;
+	} else if (resolution === 'remote') {
+		resolvedData = conflict.remoteData as T;
 		} else {
 			resolvedData = resolution;
 		}

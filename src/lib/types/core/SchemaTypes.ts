@@ -79,6 +79,15 @@ export interface ColumnDefinition<T = any> {
 	/** Number precision for numeric types */
 	precision?: number;
 	
+	/** Minimum value for numeric types */
+	min?: number;
+	
+	/** Maximum value for numeric types */
+	max?: number;
+	
+	/** Maximum length for text types */
+	maxLength?: number;
+	
 	/** Cell click handler */
 	onClick?: (value: any, row: T, column: ColumnDefinition<T>) => void;
 	

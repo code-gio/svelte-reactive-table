@@ -220,19 +220,23 @@ export interface TableFilter {
  */
 export type FilterOperator = 
 	| 'equals' 
-	| 'not_equals'
+	| 'notEquals'
 	| 'contains' 
-	| 'not_contains'
-	| 'starts_with' 
-	| 'ends_with'
-	| 'greater_than' 
-	| 'less_than'
-	| 'greater_equal' 
-	| 'less_equal'
+	| 'notContains'
+	| 'startsWith' 
+	| 'endsWith'
+	| 'greaterThan' 
+	| 'lessThan'
+	| 'greaterThanOrEqual' 
+	| 'lessThanOrEqual'
 	| 'in' 
-	| 'not_in'
-	| 'is_null' 
-	| 'is_not_null';
+	| 'notIn'
+	| 'between'
+	| 'isNull' 
+	| 'isNotNull'
+	| 'isEmpty'
+	| 'isNotEmpty'
+	| 'regex';
 
 /**
  * Filter types

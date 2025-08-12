@@ -19,7 +19,6 @@ export type {
 	CacheStrategy,
 	CacheStorage,
 	BatchConfig,
-	ConflictResolutionStrategy,
 	TransformConfig,
 	DataTransformer,
 	ErrorTransformer,
@@ -41,6 +40,8 @@ export type {
 	AdapterCapabilities,
 	AdapterMetadata,
 	AdapterMetrics,
-	ValidationResult,
 	TableAdapter
 } from './AdapterTypes.js';
+
+// Export ValidationResult separately to avoid conflicts
+export type { AdapterValidationResult } from './AdapterTypes.js';

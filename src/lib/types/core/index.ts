@@ -38,6 +38,9 @@ export type {
 	DataTransform
 } from './DataTypes.js';
 
+// Adapter types (re-export from adapters)
+export type { TableAdapter } from '../adapters/index.js';
+
 // Schema types
 export type {
 	TableSchema,
@@ -79,5 +82,10 @@ export type {
 	StatePersistence,
 	StateValidator,
 	ValidationResult as StateValidationResult,
-	ValidationRule as StateValidationRule
+	ValidationRule as StateValidationRule,
+	ConflictResolutionStrategy,
+	OptimisticUpdate,
+	RealtimeSyncEvent,
+	ConnectionState,
+	SyncStatus
 } from './StateTypes.js';

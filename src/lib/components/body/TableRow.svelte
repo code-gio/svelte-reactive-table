@@ -100,7 +100,6 @@
 <tr
 	id={rowId}
 	class="table-row {statusClasses()}"
-	role="row"
 	aria-rowindex={rowIndex}
 	aria-selected={selectable ? selected : undefined}
 	tabindex={selectable ? 0 : -1}

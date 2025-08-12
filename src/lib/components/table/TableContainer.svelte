@@ -31,7 +31,7 @@
 	});
 
 	// Virtual scrolling state
-	let containerElement: HTMLDivElement;
+	let containerElement = $state<HTMLDivElement>();
 	let scrollTop = $state(0);
 	let containerHeight = $state(0);
 
