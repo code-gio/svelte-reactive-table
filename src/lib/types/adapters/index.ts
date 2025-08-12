@@ -37,5 +37,10 @@ export type {
 	SubscriptionConfig,
 	AdapterState,
 	CacheStatus,
-	ConnectionQuality
+	ConnectionQuality,
+	AdapterCapabilities,
+	AdapterMetadata,
+	AdapterMetrics,
+	ValidationResult,
+	TableAdapter
 } from './AdapterTypes.js';

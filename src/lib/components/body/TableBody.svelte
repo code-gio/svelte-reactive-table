@@ -14,23 +14,31 @@
 	let { tableInstance }: Props = $props();
 
 	// Get reactive state and config
-	const state = $derived(() => tableInstance.state);
-	const config = $derived(() => tableInstance.config);
-	const schema = $derived(() => config().schema);
+	const state = $derived(() => tableInstance?.state || null);
+	const config = $derived(() => tableInstance?.config || null);
+	const schema = $derived(() => config()?.schema || null);
+
+	// Get editing state and options
+	const editingCell = $derived(() => tableInstance?.editingCell || null);
+	const editingOptions = $derived(() => tableInstance?.editingOptions || null);
 
 	// Get filtered and sorted data
 	const displayData = $derived(() => {
 		const currentState = state();
-		return currentState.filteredData || [];
+		return currentState?.filteredData || [];
 	});
 
 	// Filter visible columns (same logic as header)
 	const visibleColumns = $derived(() => {
-		return schema().columns.filter((column) => {
+		const schemaData = schema();
+		if (!schemaData || !schemaData.columns) return [];
+
+		return schemaData.columns.filter((column) => {
 			if (column.visible === false) return false;
 
-			const visibleSet = state().visibleColumns;
-			if (visibleSet.size > 0) {
+			const stateData = state();
+			const visibleSet = stateData?.visibleColumns;
+			if (visibleSet && visibleSet.size > 0) {
 				return visibleSet.has(String(column.id));
 			}
 
@@ -94,7 +102,7 @@
 
 	// Handle row double-click
 	function handleRowDoubleClick(row: DataRow, event: MouseEvent) {
-		const onRowDoubleClick = config().options?.onRowDoubleClick;
+		const onRowDoubleClick = config()?.options?.onRowDoubleClick;
 		if (onRowDoubleClick) {
 			onRowDoubleClick(row, event);
 		}
@@ -102,12 +110,12 @@
 
 	// Check if row is selected
 	function isRowSelected(row: DataRow): boolean {
-		return state().selectedRows.has(String(row.id));
+		return state()?.selectedRows.has(String(row.id)) || false;
 	}
 
 	// Check if row is expanded (for future expandable rows feature)
 	function isRowExpanded(row: DataRow): boolean {
-		return state().expandedRows.has(String(row.id));
+		return state()?.expandedRows.has(String(row.id)) || false;
 	}
 
 	// Get row index for accessibility
@@ -117,8 +125,8 @@
 
 	// Calculate column width (same as header)
 	function getColumnWidth(column: any) {
-		const columnWidths = state().columnWidths;
-		const customWidth = columnWidths.get(String(column.id));
+		const columnWidths = state()?.columnWidths;
+		const customWidth = columnWidths?.get(String(column.id));
 
 		if (customWidth) {
 			return `${customWidth}px`;
@@ -132,99 +140,150 @@
 	}
 
 	// Check if table is in loading state
-	const isLoading = $derived(() => state().loading);
+	const isLoading = $derived(() => state()?.loading ?? false);
 
 	// Check if table has error
-	const hasError = $derived(() => !!state().error);
+	const hasError = $derived(() => !!state()?.error);
 
 	// Empty state message
 	const emptyMessage = $derived(() => {
-		const options = config().options;
+		const options = config()?.options;
 		return options?.emptyMessage || 'No data available';
 	});
+
+	// Cell editing handlers
+	function handleStartEdit(rowId: string, columnId: string) {
+		tableInstance?.startCellEdit(rowId, columnId);
+	}
+
+	async function handleSaveEdit(rowId: string, columnId: string, newValue: any) {
+		await tableInstance?.saveCellEdit(rowId, columnId, newValue);
+	}
+
+	function handleCancelEdit(_rowId: string, _columnId: string) {
+		tableInstance?.cancelCellEdit();
+	}
+
+	function handleEditError(_rowId: string, _columnId: string, error: Error) {
+		console.error('Cell edit error:', error);
+		// Error is already handled by the tableInstance method
+	}
 </script>
 
 <!-- Table body -->
-<tbody class="table-body" class:loading={isLoading()} class:error={hasError()}>
-	{#if hasError()}
-		<!-- Error state -->
-		<tr class="error-row">
-			<td class="error-cell" colspan={sortedColumns().length} role="cell" aria-live="polite">
-				<div class="error-content">
-					<svg
-						class="error-icon"
-						width="24"
-						height="24"
-						viewBox="0 0 24 24"
-						fill="currentColor"
-						aria-hidden="true"
-					>
-						<path
-							d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-						/>
-					</svg>
-					<div class="error-text">
-						<strong>Error loading data</strong>
-						<p>{state().error}</p>
+{#if schema() && sortedColumns().length > 0}
+	<tbody class="table-body" class:loading={isLoading()} class:error={hasError()}>
+		{#if hasError()}
+			<!-- Error state -->
+			<tr class="error-row">
+				<td
+					class="error-cell"
+					colspan={sortedColumns().length + (config()?.options?.selectable ? 1 : 0)}
+					role="cell"
+					aria-live="polite"
+				>
+					<div class="error-content">
+						<svg
+							class="error-icon"
+							width="24"
+							height="24"
+							viewBox="0 0 24 24"
+							fill="currentColor"
+							aria-hidden="true"
+						>
+							<path
+								d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+							/>
+						</svg>
+						<div class="error-text">
+							<strong>Error loading data</strong>
+							<p>{state()?.error}</p>
+						</div>
 					</div>
-				</div>
-			</td>
-		</tr>
-	{:else if displayData().length === 0 && !isLoading()}
-		<!-- Empty state -->
-		<tr class="empty-row">
-			<td class="empty-cell" colspan={sortedColumns().length} role="cell">
-				<div class="empty-content">
-					<svg
-						class="empty-icon"
-						width="48"
-						height="48"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1"
-						aria-hidden="true"
-					>
-						<rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-						<line x1="9" y1="9" x2="15" y2="15" />
-						<line x1="15" y1="9" x2="9" y2="15" />
-					</svg>
-					<p class="empty-message">{emptyMessage()}</p>
-				</div>
-			</td>
-		</tr>
-	{:else}
-		<!-- Data rows -->
-		{#each displayData() as row, index (row.id)}
-			<TableRow
-				{row}
-				{index}
-				columns={sortedColumns()}
-				selected={isRowSelected(row)}
-				expanded={isRowExpanded(row)}
-				rowIndex={getRowIndex(index)}
-				selectable={config().options?.selectable || false}
-				{getColumnWidth}
-				onClick={(event) => handleRowClick(row, event)}
-				onDoubleClick={(event) => handleRowDoubleClick(row, event)}
-				onSelect={(selected) => handleRowSelect(String(row.id), selected)}
-			/>
-		{/each}
-	{/if}
-
-	{#if isLoading()}
-		<!-- Loading skeleton rows -->
-		{#each Array(5) as _, index}
-			<tr class="skeleton-row" aria-hidden="true">
-				{#each sortedColumns() as column}
-					<td class="skeleton-cell" style="width: {getColumnWidth(column)}" role="cell">
-						<div class="skeleton-content"></div>
-					</td>
-				{/each}
+				</td>
 			</tr>
-		{/each}
-	{/if}
-</tbody>
+		{:else if displayData().length === 0 && !isLoading()}
+			<!-- Empty state -->
+			<tr class="empty-row">
+				<td
+					class="empty-cell"
+					colspan={sortedColumns().length + (config()?.options?.selectable ? 1 : 0)}
+					role="cell"
+				>
+					<div class="empty-content">
+						<svg
+							class="empty-icon"
+							width="48"
+							height="48"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1"
+							aria-hidden="true"
+						>
+							<rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+							<line x1="9" y1="9" x2="15" y2="15" />
+							<line x1="15" y1="9" x2="9" y2="15" />
+						</svg>
+						<p class="empty-message">{emptyMessage()}</p>
+					</div>
+				</td>
+			</tr>
+		{:else}
+			<!-- Data rows -->
+			{#each displayData() as row, index (row.id)}
+				<TableRow
+					{row}
+					{index}
+					columns={sortedColumns()}
+					selected={isRowSelected(row)}
+					expanded={isRowExpanded(row)}
+					rowIndex={getRowIndex(index)}
+					selectable={config()?.options?.selectable || false}
+					{getColumnWidth}
+					onClick={(event) => handleRowClick(row, event)}
+					onDoubleClick={(event) => handleRowDoubleClick(row, event)}
+					onSelect={(selected) => handleRowSelect(String(row.id), selected)}
+					editing={editingOptions() || undefined}
+					editingCell={editingCell() || undefined}
+					onStartEdit={handleStartEdit}
+					onSaveEdit={handleSaveEdit}
+					onCancelEdit={handleCancelEdit}
+					onEditError={handleEditError}
+				/>
+			{/each}
+		{/if}
+
+		{#if isLoading()}
+			<!-- Loading skeleton rows -->
+			{#each Array(5) as _, index}
+				<tr class="loading-row" class:loading={true}>
+					<!-- Selection skeleton cell (if selectable) -->
+					{#if config()?.options?.selectable}
+						<td class="loading-cell selection-cell">
+							<div class="loading-skeleton"></div>
+						</td>
+					{/if}
+
+					{#each sortedColumns() as column}
+						<td class="loading-cell" style="width: {getColumnWidth(column)}">
+							<div class="loading-skeleton"></div>
+						</td>
+					{/each}
+				</tr>
+			{/each}
+		{/if}
+	</tbody>
+{:else}
+	<!-- Loading state when schema is not available -->
+	<tbody class="table-body loading">
+		<tr class="loading-row">
+			<td class="loading-cell" colspan="1">
+				<div class="loading-skeleton"></div>
+			</td>
+		</tr>
+	</tbody>
+{/if}
 
 <style>
 	.table-body {

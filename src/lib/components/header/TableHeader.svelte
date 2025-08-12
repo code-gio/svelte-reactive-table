@@ -14,33 +14,62 @@
 	let { tableInstance }: Props = $props();
 
 	// Get reactive state and config
-	const state = $derived(() => tableInstance.state);
-	const config = $derived(() => tableInstance.config);
-	const schema = $derived(() => config().schema);
+	const state = $derived(() => {
+		if (!tableInstance) {
+			return null;
+		}
+		return tableInstance.state || null;
+	});
+
+	const config = $derived(() => {
+		if (!tableInstance) {
+			return null;
+		}
+		return tableInstance.config || null;
+	});
+
+	const schema = $derived(() => {
+		const configData = config();
+		if (!configData) {
+			return null;
+		}
+		const schemaData = configData?.schema;
+		return schemaData || null;
+	});
 
 	// Filter visible columns
 	const visibleColumns = $derived(() => {
-		return schema().columns.filter((column) => {
+		const schemaData = schema();
+		if (!schemaData || !schemaData.columns) {
+			return [];
+		}
+
+		const filtered = schemaData.columns.filter((column) => {
 			// Check if column is visible (default to true if not specified)
 			if (column.visible === false) return false;
 
 			// Check if column is in visible columns set (if specified)
-			const visibleSet = state().visibleColumns;
-			if (visibleSet.size > 0) {
+			const stateData = state();
+			const visibleSet = stateData?.visibleColumns;
+			if (visibleSet && visibleSet.size > 0) {
 				return visibleSet.has(String(column.id));
 			}
 
 			return true;
 		});
+
+		return filtered;
 	});
 
 	// Sort visible columns by order
 	const sortedColumns = $derived(() => {
-		return [...visibleColumns()].sort((a, b) => {
+		const columns = [...visibleColumns()];
+		const sorted = columns.sort((a, b) => {
 			const aOrder = a.order ?? 0;
 			const bOrder = b.order ?? 0;
 			return aOrder - bOrder;
 		});
+		return sorted;
 	});
 
 	// Handle column resize
@@ -64,14 +93,14 @@
 
 	// Get current sort for a column
 	function getColumnSort(columnId: string) {
-		const sorts = state().sorts;
-		return sorts.find((sort) => sort.column === columnId);
+		const sorts = state()?.sorts;
+		return sorts?.find((sort) => sort.column === columnId);
 	}
 
 	// Check if sorting is enabled for a column
 	function isSortable(column: any) {
 		// Check global sortable option
-		if (config().options?.sortable === false) return false;
+		if (config()?.options?.sortable === false) return false;
 
 		// Check column-specific sortable option
 		if (column.sortable === false) return false;
@@ -83,7 +112,7 @@
 	// Check if resizing is enabled for a column
 	function isResizable(column: any) {
 		// Check global resizable option
-		if (config().options?.resizable === false) return false;
+		if (config()?.options?.resizable === false) return false;
 
 		// Check column-specific resizable option
 		if (column.resizable === false) return false;
@@ -94,8 +123,8 @@
 
 	// Calculate column width
 	function getColumnWidth(column: any) {
-		const columnWidths = state().columnWidths;
-		const customWidth = columnWidths.get(String(column.id));
+		const columnWidths = state()?.columnWidths;
+		const customWidth = columnWidths?.get(String(column.id));
 
 		if (customWidth) {
 			return `${customWidth}px`;
@@ -111,22 +140,46 @@
 </script>
 
 <!-- Table header -->
-<thead class="table-header">
-	<tr class="header-row">
-		{#each sortedColumns() as column, index (column.id)}
-			<HeaderCell
-				{column}
-				{index}
-				sort={getColumnSort(String(column.id))}
-				sortable={isSortable(column)}
-				resizable={isResizable(column)}
-				width={getColumnWidth(column)}
-				onSort={(direction) => handleSort(String(column.id), direction)}
-				onResize={(width) => handleColumnResize(String(column.id), width)}
-			/>
-		{/each}
-	</tr>
-</thead>
+{#if schema() && sortedColumns().length > 0}
+	<thead class="table-header">
+		<tr class="header-row">
+			<!-- Selection header (if selectable) -->
+			{#if config()?.options?.selectable}
+				<th class="selection-header" role="columnheader" aria-label="Select all rows">
+					<label class="selection-label">
+						<input
+							type="checkbox"
+							class="selection-checkbox"
+							onchange={(e) => {
+								const checkbox = e.target as HTMLInputElement;
+								if (checkbox.checked) {
+									tableInstance?.selectAllRows();
+								} else {
+									tableInstance?.clearSelection();
+								}
+							}}
+							aria-label="Select all rows"
+						/>
+						<span class="checkbox-indicator" aria-hidden="true"></span>
+					</label>
+				</th>
+			{/if}
+
+			{#each sortedColumns() as column, index (column.id)}
+				<HeaderCell
+					{column}
+					{index}
+					sort={getColumnSort(String(column.id))}
+					sortable={isSortable(column)}
+					resizable={isResizable(column)}
+					width={getColumnWidth(column)}
+					onSort={(direction) => handleSort(String(column.id), direction)}
+					onResize={(width) => handleColumnResize(String(column.id), width)}
+				/>
+			{/each}
+		</tr>
+	</thead>
+{/if}
 
 <style>
 	.table-header {
@@ -176,5 +229,42 @@
 			position: static;
 			break-inside: avoid;
 		}
+	}
+
+	/* Debug styles */
+	.debug-cell {
+		background: #ffeb3b;
+		color: #000;
+		font-size: 12px;
+		padding: 8px;
+		text-align: center;
+	}
+
+	/* Selection header */
+	.selection-header {
+		width: 48px;
+		min-width: 48px;
+		max-width: 48px;
+		padding: 0.75rem 1rem;
+		text-align: center;
+		background: var(--table-header-bg, #f7fafc);
+		border-right: 1px solid var(--table-border, #e2e8f0);
+	}
+
+	.selection-label {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+	}
+
+	.selection-checkbox {
+		width: 16px;
+		height: 16px;
+		cursor: pointer;
+	}
+
+	.checkbox-indicator {
+		display: none;
 	}
 </style>

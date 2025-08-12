@@ -16,6 +16,7 @@ export type {
   TableSchema,
   TableConfig,
   TableOptions,
+  EditingOptions,
   // State types
   StateChangeEvent as TableStateChangeEvent,
   OptimisticUpdate,
@@ -47,6 +48,7 @@ export { default as ColumnResizer } from './components/header/ColumnResizer.svel
 export { default as TableBody } from './components/body/TableBody.svelte';
 export { default as TableRow } from './components/body/TableRow.svelte';
 export { default as TableCell } from './components/body/TableCell.svelte';
+export { default as EditableCell } from './components/cells/EditableCell.svelte';
 
 // Utility exports
 export { VirtualScrollManager } from './utils/performance/virtualization.js';

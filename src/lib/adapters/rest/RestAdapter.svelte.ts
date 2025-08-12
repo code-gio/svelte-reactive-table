@@ -6,6 +6,10 @@
 import type { 
 	DataRow,
 	DataChangeEvent,
+	TableFilter,
+	TableSort
+} from '../../types/core/index.js';
+import type { 
 	TableAdapter,
 	AdapterConfig,
 	AdapterState,
@@ -14,10 +18,8 @@ import type {
 	AdapterMetrics,
 	ReadOptions,
 	CountOptions,
-	ValidationResult,
-	TableFilter,
-	TableSort
-} from '../../types/index.js';
+	ValidationResult
+} from '../../types/adapters/index.js';
 
 export interface RestAdapterConfig extends AdapterConfig {
 	/** Base API URL */
@@ -649,7 +651,8 @@ export class RestAdapter<T extends DataRow = DataRow> implements TableAdapter<T>
 	private handleRealtimeEvent(data: any): void {
 		const changeEvent: DataChangeEvent<T> = {
 			type: data.type || 'update',
-			data: data.payload || data,
+			rows: data.payload || data,
+			source: 'sync',
 			timestamp: new Date(data.timestamp || Date.now())
 		};
 		

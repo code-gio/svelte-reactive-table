@@ -16,8 +16,19 @@
 	let { tableInstance }: Props = $props();
 
 	// Get reactive state from table instance
-	const tableState = $derived(() => tableInstance.state);
-	const config = $derived(() => tableInstance.config);
+	const tableState = $derived(() => {
+		if (!tableInstance || !tableInstance.state) {
+			return null;
+		}
+		return tableInstance.state;
+	});
+
+	const config = $derived(() => {
+		if (!tableInstance || !tableInstance.config) {
+			return null;
+		}
+		return tableInstance.config;
+	});
 
 	// Virtual scrolling state
 	let containerElement: HTMLDivElement;
@@ -64,99 +75,121 @@
 	});
 
 	// Loading and error states
-	const isLoading = $derived(() => tableState().loading);
-	const hasError = $derived(() => !!tableState().error);
-	const hasData = $derived(() => tableState().paginatedData.length > 0);
-	const isVirtual = $derived(() => config().options?.virtual || false);
+	const isLoading = $derived(() => tableState()?.loading ?? false);
+	const hasError = $derived(() => !!tableState()?.error);
+	const hasData = $derived(() => (tableState()?.paginatedData?.length ?? 0) > 0);
+	const isVirtual = $derived(() => config()?.options?.virtual || false);
 
 	// Table stats for debugging
-	const stats = $derived(() => tableInstance.getStats());
+	const stats = $derived(() => tableInstance?.getStats() || null);
 </script>
 
 <!-- Main table container -->
-<div
-	bind:this={containerElement}
-	class="table-container"
-	class:virtual={isVirtual()}
-	class:loading={isLoading()}
-	onscroll={handleScroll}
-	role="table"
-	aria-rowcount={stats()?.totalRows}
-	aria-colcount={config().schema.columns.length}
-	aria-label="Data table content"
->
-	<!-- Table element -->
-	<table class="table">
-		<!-- Table header -->
-		<TableHeader {tableInstance} />
+{#if config() && config()?.schema && config()?.schema?.columns}
+	<div
+		bind:this={containerElement}
+		class="table-container"
+		class:virtual={isVirtual()}
+		class:loading={isLoading()}
+		onscroll={handleScroll}
+		role="table"
+		aria-rowcount={stats()?.totalRows}
+		aria-colcount={config()?.schema?.columns?.length || 0}
+		aria-label="Data table content"
+	>
+		<!-- Table element -->
+		<table class="table">
+			<!-- Table header -->
+			<TableHeader {tableInstance} />
 
-		<!-- Table body -->
-		{#if hasError()}
-			<tbody>
-				<tr>
-					<td colspan={config().schema.columns.length} class="error-cell">
-						<div class="inline-error">
-							Error loading data: {tableState().error}
-							<button type="button" class="retry-btn" onclick={() => tableInstance.refresh()}>
-								Retry
-							</button>
-						</div>
-					</td>
-				</tr>
-			</tbody>
-		{:else if isLoading() && !hasData()}
-			<tbody>
-				<tr>
-					<td colspan={config().schema.columns.length} class="loading-cell">
-						<div class="inline-loading">
-							<div class="spinner" aria-hidden="true"></div>
-							Loading data...
-						</div>
-					</td>
-				</tr>
-			</tbody>
-		{:else if !hasData()}
-			<tbody>
-				<tr>
-					<td colspan={config().schema.columns.length} class="empty-cell">
-						<div class="empty-state">
-							<div class="empty-icon" aria-hidden="true">📄</div>
-							<h3>No data available</h3>
-							<p>There are no records to display.</p>
-						</div>
-					</td>
-				</tr>
-			</tbody>
-		{:else}
-			<TableBody {tableInstance} />
+			<!-- Table body -->
+			{#if hasError()}
+				<tbody>
+					<tr>
+						<td
+							colspan={(config()?.schema?.columns?.length || 0) +
+								(config()?.options?.selectable ? 1 : 0)}
+							class="error-cell"
+						>
+							<div class="inline-error">
+								Error loading data: {tableState()?.error}
+								<button type="button" class="retry-btn" onclick={() => tableInstance?.refresh()}>
+									Retry
+								</button>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			{:else if isLoading() && !hasData()}
+				<tbody>
+					<tr>
+						<td
+							colspan={(config()?.schema?.columns?.length || 0) +
+								(config()?.options?.selectable ? 1 : 0)}
+							class="loading-cell"
+						>
+							<div class="inline-loading">
+								<div class="spinner" aria-hidden="true"></div>
+								Loading data...
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			{:else if !hasData()}
+				<tbody>
+					<tr>
+						<td
+							colspan={(config()?.schema?.columns?.length || 0) +
+								(config()?.options?.selectable ? 1 : 0)}
+							class="empty-cell"
+						>
+							<div class="empty-state">
+								<div class="empty-icon" aria-hidden="true">📄</div>
+								<h3>No data available</h3>
+								<p>There are no records to display.</p>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			{:else}
+				<TableBody {tableInstance} />
+			{/if}
+		</table>
+
+		<!-- Virtual scroll spacers for performance -->
+		{#if isVirtual() && hasData()}
+			<div
+				class="virtual-spacer-top"
+				style="height: {tableState()?.renderRange.offsetTop}px"
+				aria-hidden="true"
+			></div>
+			<div
+				class="virtual-spacer-bottom"
+				style="height: {tableState()?.renderRange.offsetBottom}px"
+				aria-hidden="true"
+			></div>
 		{/if}
-	</table>
+	</div>
 
-	<!-- Virtual scroll spacers for performance -->
-	{#if isVirtual() && hasData()}
-		<div
-			class="virtual-spacer-top"
-			style="height: {tableState().renderRange.offsetTop}px"
-			aria-hidden="true"
-		></div>
-		<div
-			class="virtual-spacer-bottom"
-			style="height: {tableState().renderRange.offsetBottom}px"
-			aria-hidden="true"
-		></div>
-	{/if}
-</div>
-
-<!-- Table info for screen readers -->
-<div class="table-info sr-only" aria-live="polite">
-	{#if isLoading()}
-		Loading table data
-	{:else if hasError()}
-		Error loading table data
-	{:else}
-		Table loaded with {stats()?.totalRows || 0} rows
-	{/if}
-</div>
+	<!-- Table info for screen readers -->
+	<div class="table-info sr-only" aria-live="polite">
+		{#if isLoading()}
+			Loading table data
+		{:else if hasError()}
+			Error loading table data
+		{:else}
+			Table loaded with {stats()?.totalRows || 0} rows
+		{/if}
+	</div>
+{:else}
+	<!-- Loading state when config is not available -->
+	<div class="table-container loading">
+		<div class="table-initializing" role="status" aria-live="polite">
+			<div class="loading-spinner" aria-hidden="true"></div>
+			<span>Initializing table...</span>
+		</div>
+	</div>
+{/if}
 
 <style>
 	.table-container {

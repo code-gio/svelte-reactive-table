@@ -334,7 +334,7 @@ export abstract class BaseAdapter<T extends DataRow = DataRow> implements CRUDOp
 	/**
 	 * Generate unique adapter ID
 	 */
-	private generateId(): string {
+	protected generateId(): string {
 		return `${this.config.type}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 	}
 	

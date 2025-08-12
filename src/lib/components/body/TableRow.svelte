@@ -1,10 +1,11 @@
 <!--
   TableRow component - renders individual table row with cells
+  Supports inline cell editing when enabled
 -->
 
 <script lang="ts">
 	import TableCell from './TableCell.svelte';
-	import type { DataRow, ColumnDefinition } from '../../types/core/index.js';
+	import type { DataRow, ColumnDefinition, EditingOptions } from '../../types/core/index.js';
 
 	interface Props {
 		row: DataRow;
@@ -18,6 +19,15 @@
 		onClick: (event: MouseEvent) => void;
 		onDoubleClick: (event: MouseEvent) => void;
 		onSelect: (selected: boolean) => void;
+		/** Optional editing configuration */
+		editing?: EditingOptions;
+		/** Currently editing cell (rowId:columnId) */
+		editingCell?: string;
+		/** Cell edit handlers */
+		onStartEdit?: (rowId: string, columnId: string) => void;
+		onSaveEdit?: (rowId: string, columnId: string, newValue: any) => void | Promise<void>;
+		onCancelEdit?: (rowId: string, columnId: string) => void;
+		onEditError?: (rowId: string, columnId: string, error: Error) => void;
 	}
 
 	let {
@@ -31,7 +41,13 @@
 		getColumnWidth,
 		onClick,
 		onDoubleClick,
-		onSelect
+		onSelect,
+		editing,
+		editingCell,
+		onStartEdit,
+		onSaveEdit,
+		onCancelEdit,
+		onEditError
 	}: Props = $props();
 
 	// Handle row click
@@ -111,11 +127,22 @@
 
 	<!-- Data cells -->
 	{#each columns as column (column.id)}
+		{@const rowId = String(row.id)}
+		{@const columnId = String(column.id)}
+		{@const cellKey = `${rowId}:${columnId}`}
 		<TableCell
 			{row}
 			{column}
 			width={getColumnWidth(column)}
 			value={row[String(column.id)]}
+			{rowId}
+			{columnId}
+			{editing}
+			isEditing={editingCell === cellKey}
+			{onStartEdit}
+			{onSaveEdit}
+			{onCancelEdit}
+			{onEditError}
 		/>
 	{/each}
 

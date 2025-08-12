@@ -1,15 +1,48 @@
 <!--
-  Demo page for svelte-reactive-table
-  Showcases the table's features with sample data
+  Demo page for svelte-reactive-table with cell editing
+  Showcases all table features including inline cell editing
 -->
 
 <script lang="ts">
 	import ReactiveTable from '$lib/components/table/ReactiveTable.svelte';
-	import { FirebaseAdapter } from '$lib/adapters/firebase/FirebaseAdapter.svelte.js';
-	import type { TableConfig, DataRow } from '$lib/types/core/index.js';
+	import type { DataRow } from '$lib/types/core/index.js';
+	import type { TableConfig } from '$lib/types/core/TableTypes.js';
 
-	// Sample data for the demo
-	const sampleData: DataRow[] = [
+	// Define EditingOptions locally to avoid import issues
+	interface EditingOptions {
+		trigger?: 'click' | 'doubleclick' | 'focus';
+		editableColumns?: string[];
+		autoSave?: boolean;
+		saveOnEnter?: boolean;
+		cancelOnEscape?: boolean;
+		showButtons?: boolean;
+		validateOnSave?: boolean;
+		onCellEditStart?: (rowId: string, columnId: string, value: any) => void;
+		onCellEditSave?: (
+			rowId: string,
+			columnId: string,
+			oldValue: any,
+			newValue: any
+		) => void | Promise<void>;
+		onCellEditCancel?: (rowId: string, columnId: string, value: any) => void;
+		onCellEditError?: (rowId: string, columnId: string, error: Error) => void;
+	}
+
+	// Sample data for the demo with proper types for editing
+	interface PersonRow extends DataRow {
+		id: string;
+		name: string;
+		email: string;
+		age: number;
+		department: string;
+		salary: number;
+		active: boolean;
+		joinDate: Date;
+		notes: string;
+		rating: number;
+	}
+
+	let sampleData: PersonRow[] = [
 		{
 			id: '1',
 			name: 'John Doe',
@@ -18,7 +51,9 @@
 			department: 'Engineering',
 			salary: 75000,
 			active: true,
-			joinDate: '2022-01-15'
+			joinDate: new Date('2022-01-15'),
+			notes: 'Senior developer',
+			rating: 4.8
 		},
 		{
 			id: '2',
@@ -28,7 +63,9 @@
 			department: 'Marketing',
 			salary: 65000,
 			active: true,
-			joinDate: '2022-03-20'
+			joinDate: new Date('2022-03-20'),
+			notes: 'Marketing specialist',
+			rating: 4.5
 		},
 		{
 			id: '3',
@@ -38,7 +75,9 @@
 			department: 'Sales',
 			salary: 80000,
 			active: false,
-			joinDate: '2021-11-10'
+			joinDate: new Date('2021-11-10'),
+			notes: 'On leave',
+			rating: 4.2
 		},
 		{
 			id: '4',
@@ -48,7 +87,9 @@
 			department: 'Engineering',
 			salary: 78000,
 			active: true,
-			joinDate: '2022-02-08'
+			joinDate: new Date('2022-02-08'),
+			notes: 'Full-stack developer',
+			rating: 4.7
 		},
 		{
 			id: '5',
@@ -58,7 +99,9 @@
 			department: 'HR',
 			salary: 60000,
 			active: true,
-			joinDate: '2022-04-12'
+			joinDate: new Date('2022-04-12'),
+			notes: 'HR coordinator',
+			rating: 4.3
 		},
 		{
 			id: '6',
@@ -68,7 +111,9 @@
 			department: 'Marketing',
 			salary: 62000,
 			active: true,
-			joinDate: '2022-05-18'
+			joinDate: new Date('2022-05-18'),
+			notes: 'Content creator',
+			rating: 4.4
 		},
 		{
 			id: '7',
@@ -78,7 +123,9 @@
 			department: 'Engineering',
 			salary: 82000,
 			active: false,
-			joinDate: '2021-09-25'
+			joinDate: new Date('2021-09-25'),
+			notes: 'Team lead',
+			rating: 4.9
 		},
 		{
 			id: '8',
@@ -88,7 +135,9 @@
 			department: 'Sales',
 			salary: 72000,
 			active: true,
-			joinDate: '2022-06-30'
+			joinDate: new Date('2022-06-30'),
+			notes: 'Account manager',
+			rating: 4.6
 		},
 		{
 			id: '9',
@@ -98,7 +147,9 @@
 			department: 'HR',
 			salary: 58000,
 			active: true,
-			joinDate: '2022-07-14'
+			joinDate: new Date('2022-07-14'),
+			notes: 'Recruiter',
+			rating: 4.1
 		},
 		{
 			id: '10',
@@ -108,90 +159,169 @@
 			department: 'Engineering',
 			salary: 85000,
 			active: true,
-			joinDate: '2021-12-03'
+			joinDate: new Date('2021-12-03'),
+			notes: 'Backend engineer',
+			rating: 4.8
 		}
 	];
 
-	// Table configuration
-	const tableConfig: TableConfig<DataRow> = {
+	// Editing configuration state
+	let editingEnabled = $state(true);
+	let editingTrigger = $state<'click' | 'doubleclick' | 'focus'>('doubleclick');
+	let autoSave = $state(true);
+	let showButtons = $state(false);
+	let validateOnSave = $state(true);
+
+	// Activity log for editing
+	let activityLog = $state<string[]>([]);
+
+	function addToLog(message: string) {
+		const timestamp = new Date().toLocaleTimeString();
+		activityLog = [`${timestamp}: ${message}`, ...activityLog.slice(0, 9)];
+	}
+
+	// Create editing options
+	const editingOptions = $derived(() => ({
+		trigger: editingTrigger,
+		autoSave,
+		saveOnEnter: true,
+		cancelOnEscape: true,
+		showButtons,
+		validateOnSave,
+		editableColumns: ['name', 'email', 'age', 'department', 'salary', 'active', 'notes', 'rating'],
+		onCellEditStart: (rowId: string, columnId: string, value: any) => {
+			addToLog(`Started editing ${columnId} for ${rowId}: "${value}"`);
+		},
+		onCellEditSave: async (rowId: string, columnId: string, oldValue: any, newValue: any) => {
+			addToLog(`Saved ${columnId} for ${rowId}: "${oldValue}" → "${newValue}"`);
+
+			// Update the actual data
+			const rowIndex = sampleData.findIndex((row) => row.id === rowId);
+			if (rowIndex !== -1) {
+				sampleData[rowIndex] = {
+					...sampleData[rowIndex],
+					[columnId]: newValue
+				};
+				// Trigger reactivity
+				sampleData = [...sampleData];
+			}
+		},
+		onCellEditCancel: (rowId: string, columnId: string, value: any) => {
+			addToLog(`Cancelled editing ${columnId} for ${rowId}`);
+		},
+		onCellEditError: (rowId: string, columnId: string, error: Error) => {
+			addToLog(`Error editing ${columnId} for ${rowId}: ${error.message}`);
+		}
+	}));
+
+	// Table configuration with editing
+	const tableConfig = $derived(() => ({
 		id: 'employee-table',
 		schema: {
+			name: 'Employees',
+			version: '1.0.0',
 			columns: [
 				{
 					id: 'name',
+					key: 'name',
 					header: 'Name',
 					type: 'text',
 					width: 150,
 					sortable: true,
-					filterable: true,
-					required: true
+					required: true,
+					description: 'Employee full name'
 				},
 				{
 					id: 'email',
+					key: 'email',
 					header: 'Email',
 					type: 'email',
 					width: 200,
 					sortable: true,
-					filterable: true,
-					onClick: (value, row) => {
+					required: true,
+					description: 'Employee email address',
+					onClick: (value: any, row: any) => {
 						window.open(`mailto:${value}`, '_blank');
 					}
 				},
 				{
 					id: 'age',
+					key: 'age',
 					header: 'Age',
 					type: 'number',
 					width: 80,
 					sortable: true,
-					filterable: true,
 					align: 'right',
-					precision: 0
+					min: 18,
+					max: 80,
+					description: 'Employee age'
 				},
 				{
 					id: 'department',
+					key: 'department',
 					header: 'Department',
 					type: 'text',
 					width: 120,
 					sortable: true,
-					filterable: true
+					description: 'Work department'
 				},
 				{
 					id: 'salary',
+					key: 'salary',
 					header: 'Salary',
 					type: 'currency',
 					width: 120,
 					sortable: true,
-					filterable: true,
-					align: 'right'
+					align: 'right',
+					description: 'Annual salary'
 				},
 				{
 					id: 'active',
+					key: 'active',
 					header: 'Active',
 					type: 'boolean',
 					width: 80,
 					sortable: true,
-					filterable: true,
-					align: 'center'
+					align: 'center',
+					description: 'Employment status'
 				},
 				{
 					id: 'joinDate',
+					key: 'joinDate',
 					header: 'Join Date',
 					type: 'date',
 					width: 120,
 					sortable: true,
-					filterable: true
+					description: 'Date of joining'
+				},
+				{
+					id: 'rating',
+					key: 'rating',
+					header: 'Rating',
+					type: 'number',
+					width: 90,
+					sortable: true,
+					align: 'right',
+					precision: 1,
+					min: 1,
+					max: 5,
+					description: 'Performance rating (1-5)'
+				},
+				{
+					id: 'notes',
+					key: 'notes',
+					header: 'Notes',
+					type: 'text',
+					width: 180,
+					maxLength: 200,
+					description: 'Additional notes'
 				}
 			]
 		},
 		adapter: {
-			type: 'firebase',
-			options: {
-				cache: {
-					enabled: true,
-					ttl: 300000 // 5 minutes
-				}
-			}
+			type: 'memory' as const
 		},
+		initialData: sampleData,
 		options: {
 			pageSize: 5,
 			sortable: true,
@@ -203,21 +333,22 @@
 			realtime: false,
 			optimistic: true,
 			emptyMessage: 'No employees found',
-			onRowClick: (row, event) => {
+			editing: editingEnabled ? editingOptions : undefined,
+			onRowClick: (row: any, _event: any) => {
 				console.log('Row clicked:', row);
 			},
-			onRowDoubleClick: (row, event) => {
+			onRowDoubleClick: (row: any, _event: any) => {
 				console.log('Row double-clicked:', row);
 			},
 			accessibility: {
-				ariaLabel: 'Employee data table',
+				ariaLabel: 'Editable Employee Data Table',
 				ariaDescription:
-					'A table showing employee information with sorting, filtering, and selection capabilities',
+					'Employee table with inline cell editing capabilities. Double-click cells to edit.',
 				keyboardNavigation: true,
 				screenReader: true
 			}
 		}
-	};
+	}));
 
 	// Demo state
 	let selectedRows = $state<Set<string>>(new Set());
@@ -284,67 +415,257 @@
 			tableInstance.refresh();
 		}
 	}
+
+	// Additional demo functions for editing
+	function clearActivityLog() {
+		activityLog = [];
+	}
+
+	function resetSampleData() {
+		sampleData = [
+			{
+				id: '1',
+				name: 'John Doe',
+				email: 'john@example.com',
+				age: 32,
+				department: 'Engineering',
+				salary: 75000,
+				active: true,
+				joinDate: new Date('2022-01-15'),
+				notes: 'Senior developer',
+				rating: 4.8
+			},
+			{
+				id: '2',
+				name: 'Jane Smith',
+				email: 'jane@example.com',
+				age: 28,
+				department: 'Marketing',
+				salary: 65000,
+				active: true,
+				joinDate: new Date('2022-03-20'),
+				notes: 'Marketing specialist',
+				rating: 4.5
+			},
+			{
+				id: '3',
+				name: 'Bob Johnson',
+				email: 'bob@example.com',
+				age: 35,
+				department: 'Sales',
+				salary: 80000,
+				active: false,
+				joinDate: new Date('2021-11-10'),
+				notes: 'On leave',
+				rating: 4.2
+			},
+			{
+				id: '4',
+				name: 'Alice Brown',
+				email: 'alice@example.com',
+				age: 29,
+				department: 'Engineering',
+				salary: 78000,
+				active: true,
+				joinDate: new Date('2022-02-08'),
+				notes: 'Full-stack developer',
+				rating: 4.7
+			},
+			{
+				id: '5',
+				name: 'Charlie Wilson',
+				email: 'charlie@example.com',
+				age: 31,
+				department: 'HR',
+				salary: 60000,
+				active: true,
+				joinDate: new Date('2022-04-12'),
+				notes: 'HR coordinator',
+				rating: 4.3
+			}
+		];
+		addToLog('Data reset to original values');
+	}
+
+	function addNewEmployee() {
+		const newId = (sampleData.length + 1).toString();
+		const newEmployee: PersonRow = {
+			id: newId,
+			name: 'New Employee',
+			email: 'new@example.com',
+			age: 25,
+			department: 'TBD',
+			salary: 60000,
+			active: true,
+			joinDate: new Date(),
+			notes: 'New hire',
+			rating: 0
+		};
+		sampleData = [...sampleData, newEmployee];
+		addToLog(`Added new employee with ID ${newId}`);
+	}
 </script>
 
 <svelte:head>
-	<title>svelte-reactive-table Demo</title>
+	<title>Svelte Reactive Table - Cell Editing Demo</title>
 	<meta
 		name="description"
-		content="Demo of the svelte-reactive-table library showcasing sorting, filtering, and real-time data capabilities"
+		content="Interactive demo showcasing cell editing functionality in svelte-reactive-table"
 	/>
 </svelte:head>
 
 <div class="demo-container">
 	<header class="demo-header">
-		<h1>🚀 svelte-reactive-table Demo</h1>
-		<p>A powerful, reactive data table for Svelte 5 with real-time capabilities</p>
+		<h1>🔥 svelte-reactive-table Demo</h1>
+		<p>Interactive table with <strong>cell editing capabilities</strong></p>
+		<div class="feature-badges">
+			<span class="badge primary">✨ Cell Editing</span>
+			<span class="badge secondary">🎯 Type-Aware Inputs</span>
+			<span class="badge secondary">⌨️ Keyboard Shortcuts</span>
+			<span class="badge secondary">✅ Smart Validation</span>
+		</div>
 	</header>
 
 	<div class="demo-content">
-		<!-- Demo Controls -->
-		<div class="demo-controls">
-			<div class="control-group">
-				<label for="filter-input">Filter by Name:</label>
-				<input
-					id="filter-input"
-					type="text"
-					placeholder="Type to filter..."
-					bind:value={currentFilter}
-					oninput={(e) => handleFilterChange((e.target as HTMLInputElement).value)}
-				/>
+		<!-- Editing Controls Section -->
+		<section class="controls-section">
+			<h2>🎛️ Cell Editing Controls</h2>
+			<div class="controls-grid">
+				<div class="control-group">
+					<label>
+						<input type="checkbox" bind:checked={editingEnabled} />
+						Enable Cell Editing
+					</label>
+				</div>
+
+				<div class="control-group">
+					<label for="trigger-select">Edit Trigger:</label>
+					<select id="trigger-select" bind:value={editingTrigger} disabled={!editingEnabled}>
+						<option value="click">Single Click</option>
+						<option value="doubleclick">Double Click</option>
+						<option value="focus">Focus (Tab)</option>
+					</select>
+				</div>
+
+				<div class="control-group">
+					<label>
+						<input type="checkbox" bind:checked={autoSave} disabled={!editingEnabled} />
+						Auto Save on Blur
+					</label>
+				</div>
+
+				<div class="control-group">
+					<label>
+						<input type="checkbox" bind:checked={showButtons} disabled={!editingEnabled} />
+						Show Save/Cancel Buttons
+					</label>
+				</div>
+
+				<div class="control-group">
+					<label>
+						<input type="checkbox" bind:checked={validateOnSave} disabled={!editingEnabled} />
+						Validate on Save
+					</label>
+				</div>
 			</div>
 
-			<div class="control-group">
-				<label>Sort by:</label>
-				<select
-					onchange={(e) => {
-						const target = e.target as HTMLSelectElement;
-						const [column, direction] = target.value.split('-');
-						handleSortChange(column, direction as 'asc' | 'desc');
-					}}
-				>
-					<option value="">No sorting</option>
-					<option value="name-asc">Name (A-Z)</option>
-					<option value="name-desc">Name (Z-A)</option>
-					<option value="age-asc">Age (Low-High)</option>
-					<option value="age-desc">Age (High-Low)</option>
-					<option value="salary-asc">Salary (Low-High)</option>
-					<option value="salary-desc">Salary (High-Low)</option>
-					<option value="joinDate-asc">Join Date (Old-New)</option>
-					<option value="joinDate-desc">Join Date (New-Old)</option>
-				</select>
+			<div class="action-buttons">
+				<button type="button" onclick={addNewEmployee} class="btn btn-primary">
+					➕ Add Employee
+				</button>
+				<button type="button" onclick={resetSampleData} class="btn btn-secondary">
+					🔄 Reset Data
+				</button>
+				<button type="button" onclick={exportData} class="btn btn-secondary">
+					📁 Export CSV
+				</button>
+				<button type="button" onclick={clearActivityLog} class="btn btn-secondary">
+					🧹 Clear Log
+				</button>
 			</div>
+		</section>
 
-			<div class="control-group">
-				<button class="btn btn-secondary" onclick={clearFilters}>Clear Filters</button>
-				<button class="btn btn-secondary" onclick={clearSort}>Clear Sort</button>
+		<!-- Instructions Section -->
+		<section class="instructions-section">
+			<h2>📖 How to Edit Cells</h2>
+			<div class="instruction-grid">
+				<div class="instruction-card">
+					<div class="instruction-icon">🖱️</div>
+					<h3>Start Editing</h3>
+					<p>
+						{editingTrigger === 'click'
+							? 'Single-click'
+							: editingTrigger === 'doubleclick'
+								? 'Double-click'
+								: 'Tab to focus'}
+						on any cell to start editing
+					</p>
+				</div>
+				<div class="instruction-card">
+					<div class="instruction-icon">⌨️</div>
+					<h3>Keyboard Shortcuts</h3>
+					<ul>
+						<li><kbd>Enter</kbd> - Save changes</li>
+						<li><kbd>Escape</kbd> - Cancel editing</li>
+						<li><kbd>Tab</kbd> - Save and move to next</li>
+					</ul>
+				</div>
+				<div class="instruction-card">
+					<div class="instruction-icon">🎯</div>
+					<h3>Column Types</h3>
+					<p>
+						Text, Email, Number, Currency, Boolean, Date, and Rating columns with type-specific
+						inputs
+					</p>
+				</div>
 			</div>
+		</section>
 
-			<div class="control-group">
-				<button class="btn btn-primary" onclick={exportData}>Export CSV</button>
-				<button class="btn btn-primary" onclick={refreshData}>Refresh</button>
+		<!-- Traditional Table Controls -->
+		<section class="table-controls-section">
+			<h2>🔧 Table Controls</h2>
+			<div class="demo-controls">
+				<div class="control-group">
+					<label for="filter-input">Filter by Name:</label>
+					<input
+						id="filter-input"
+						type="text"
+						placeholder="Type to filter..."
+						bind:value={currentFilter}
+						oninput={(e) => handleFilterChange((e.target as HTMLInputElement).value)}
+					/>
+				</div>
+
+				<div class="control-group">
+					<label for="sort-select">Sort by:</label>
+					<select
+						id="sort-select"
+						onchange={(e) => {
+							const target = e.target as HTMLSelectElement;
+							const [column, direction] = target.value.split('-');
+							if (column && direction) {
+								handleSortChange(column, direction as 'asc' | 'desc');
+							}
+						}}
+					>
+						<option value="">No sorting</option>
+						<option value="name-asc">Name (A-Z)</option>
+						<option value="name-desc">Name (Z-A)</option>
+						<option value="age-asc">Age (Low-High)</option>
+						<option value="age-desc">Age (High-Low)</option>
+						<option value="salary-asc">Salary (Low-High)</option>
+						<option value="salary-desc">Salary (High-Low)</option>
+						<option value="rating-desc">Rating (High-Low)</option>
+					</select>
+				</div>
+
+				<div class="control-group">
+					<button class="btn btn-secondary" onclick={clearFilters}>Clear Filters</button>
+					<button class="btn btn-secondary" onclick={clearSort}>Clear Sort</button>
+					<button class="btn btn-primary" onclick={refreshData}>Refresh</button>
+				</div>
 			</div>
-		</div>
+		</section>
 
 		<!-- Demo Stats -->
 		<div class="demo-stats">
@@ -370,7 +691,7 @@
 
 		<!-- Reactive Table -->
 		<div class="table-wrapper">
-			<ReactiveTable config={tableConfig} bind:this={tableInstance} class="demo-table" />
+			<ReactiveTable config={tableConfig as any} bind:this={tableInstance} class="demo-table" />
 		</div>
 
 		<!-- Feature Showcase -->

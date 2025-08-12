@@ -7,6 +7,7 @@ export type {
 	TableConfig,
 	TableOptions,
 	AccessibilityOptions,
+	EditingOptions,
 	TableState,
 	ReactiveTableInstance,
 	TableFilter,

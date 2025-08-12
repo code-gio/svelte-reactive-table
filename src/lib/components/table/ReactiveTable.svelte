@@ -22,15 +22,33 @@
 	// Create reactive table instance
 	let tableInstance = $state<ReactiveTable<any> | null>(null);
 	let mounted = $state(false);
+	let initialized = $state(false);
 	let error = $state<string | null>(null);
+
+	// Derive the actual config value
+	const actualConfig = $derived(() => {
+		return (config as any)?.() || config;
+	});
 
 	// Initialize table instance
 	onMount(async () => {
 		try {
-			tableInstance = new ReactiveTable(config);
+			// Ensure config is properly structured
+			if (!actualConfig() || !actualConfig().schema || !actualConfig().schema.columns) {
+				throw new Error('Invalid table configuration: missing schema or columns');
+			}
+
+			tableInstance = new ReactiveTable(actualConfig());
 			mounted = true;
 
-			// Auto-connect is handled by ReactiveTable constructor
+			// Wait for the table instance to be fully initialized
+			// This ensures the adapter and state are ready
+			await new Promise((resolve) => {
+				// Use a small delay to ensure all internal initialization is complete
+				setTimeout(resolve, 10);
+			});
+
+			initialized = true;
 		} catch (err) {
 			error = (err as Error).message;
 			console.error('Failed to initialize ReactiveTable:', err);
@@ -46,7 +64,7 @@
 
 	// Reactive state from table instance (using Svelte 5 runes)
 	const tableState = $derived(() => {
-		if (!tableInstance || !mounted) return null;
+		if (!tableInstance || !initialized) return null;
 		return tableInstance.state;
 	});
 
@@ -88,15 +106,15 @@
 	class="reactive-table {className}"
 	{style}
 	role="region"
-	aria-label={config.options?.accessibility?.ariaLabel || 'Data table'}
-	aria-describedby={config.options?.accessibility?.ariaDescription
+	aria-label={actualConfig()?.options?.accessibility?.ariaLabel || 'Data table'}
+	aria-describedby={actualConfig()?.options?.accessibility?.ariaDescription
 		? 'table-description'
 		: undefined}
 >
 	<!-- Optional description for screen readers -->
-	{#if config.options?.accessibility?.ariaDescription}
+	{#if actualConfig()?.options?.accessibility?.ariaDescription}
 		<div id="table-description" class="sr-only">
-			{config.options.accessibility.ariaDescription}
+			{actualConfig().options.accessibility.ariaDescription}
 		</div>
 	{/if}
 
@@ -113,7 +131,7 @@
 	{:else if isLoading() && !isConnected()}
 		<!-- Loading skeleton -->
 		<TableSkeleton />
-	{:else if mounted && tableInstance}
+	{:else if mounted && initialized && tableInstance}
 		<!-- Main table content -->
 		<TableContainer {tableInstance} />
 	{:else}

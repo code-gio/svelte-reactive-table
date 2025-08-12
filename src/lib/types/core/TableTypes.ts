@@ -4,22 +4,28 @@
  */
 
 import type { TableSchema } from './SchemaTypes.js';
+import type { AdapterConfig } from '../adapters/AdapterTypes.js';
+import type { BaseAdapter } from '../../adapters/base/BaseAdapter.js';
+import type { DataRow } from './DataTypes.js';
 
 /**
  * Main table configuration interface
  */
-export interface TableConfig<T = any> {
+export interface TableConfig<T extends DataRow = DataRow> {
 	/** Unique identifier for the table instance */
 	id: string;
 	
 	/** Database adapter for data operations */
-	adapter: any; // BaseAdapter<T> - will be properly typed when BaseAdapter is imported
+	adapter: BaseAdapter<T> | AdapterConfig;
 	
 	/** Table schema definition */
 	schema: TableSchema<T>;
 	
 	/** Optional table configuration */
 	options?: TableOptions;
+	
+	/** Initial data for memory adapters */
+	initialData?: T[];
 }
 
 /**
@@ -67,6 +73,9 @@ export interface TableOptions {
 	
 	/** Enable inline editing */
 	editable?: boolean;
+	
+	/** Editing configuration */
+	editing?: EditingOptions;
 	
 	/** Custom CSS class for styling */
 	className?: string;
@@ -136,7 +145,7 @@ export interface TableState<T = any> {
 /**
  * Table instance interface
  */
-export interface ReactiveTableInstance<T = any> {
+export interface ReactiveTableInstance<T extends DataRow = DataRow> {
 	/** Table configuration */
 	readonly config: TableConfig<T>;
 	
@@ -250,9 +259,41 @@ export interface TableSort {
 export type SortDirection = 'asc' | 'desc';
 
 /**
+ * Cell editing configuration
+ */
+export interface EditingOptions {
+	/** How to trigger cell editing */
+	trigger?: 'click' | 'doubleclick' | 'focus';
+	
+	/** Which columns are editable (if not specified, all columns are editable) */
+	editableColumns?: string[];
+	
+	/** Auto-save on blur */
+	autoSave?: boolean;
+	
+	/** Save on Enter key */
+	saveOnEnter?: boolean;
+	
+	/** Cancel on Escape key */
+	cancelOnEscape?: boolean;
+	
+	/** Show save/cancel buttons */
+	showButtons?: boolean;
+	
+	/** Validate on save */
+	validateOnSave?: boolean;
+	
+	/** Cell edit event handlers */
+	onCellEditStart?: (rowId: string, columnId: string, value: any) => void;
+	onCellEditSave?: (rowId: string, columnId: string, oldValue: any, newValue: any) => void | Promise<void>;
+	onCellEditCancel?: (rowId: string, columnId: string, value: any) => void;
+	onCellEditError?: (rowId: string, columnId: string, error: Error) => void;
+}
+
+/**
  * Table events interface
  */
-export interface TableEvents<T = any> {
+export interface TableEvents<T extends DataRow = DataRow> {
 	/** Fired when data changes */
 	dataChange: { data: T[] };
 	
@@ -293,7 +334,7 @@ export interface TableEvents<T = any> {
 /**
  * Table component props interface
  */
-export interface TableProps<T = any> {
+export interface TableProps<T extends DataRow = DataRow> {
 	/** Table configuration */
 	config: TableConfig<T>;
 	
